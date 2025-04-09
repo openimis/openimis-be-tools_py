@@ -31,7 +31,8 @@ from insuree.models import Family, Insuree, InsureePolicy
 from medical.models import Diagnosis, Item, Service, ItemOrService
 from location.models import Location, HealthFacility, LocationManager, UserDistrict
 from medical_pricelist.models import ServicesPricelist, ItemsPricelist
-from claim.models import ClaimAdmin, Claim, Feedback, FeedbackPrompt
+from core.models.user import ClaimAdmin
+from claim.models import Claim, Feedback, FeedbackPrompt
 from policy.models import Policy
 from policy.services import update_insuree_policies
 from .utils import dictfetchall, sanitize_xml, dmy_format_sql
