@@ -50,9 +50,9 @@ class ItemServiceResource(resources.ModelResource):
         # You can specify which column should be used for data ID during import (by default = 'id')
         import_id_fields = ('code',)
 
-    def __init__(self, given_id):
+    def __init__(self, user):
         super().__init__()
-        self.user_id = given_id
+        self._user = user
 
     # The 4 dehydrate_xxx_cat methods generate the data that is going to be put in the xxx_cat columns
     def dehydrate_male_cat(self, item_service):
@@ -84,7 +84,13 @@ class ItemServiceResource(resources.ModelResource):
                                                         saves_null_values=False,
                                                         widget=IntegerWidget())
         super().before_import(dataset, **kwargs)
-
+    def before_save_instance(self, instance, row, **kwargs):
+        if hasattr(instance, 'audit_user_id'):
+            if self._user and self._user._u.id:
+                instance.audit_user_id = self._user._u.id
+            else:
+                instance.audit_user_id = -1
+                logger.warning(_("im_export.save_without_user"))
     # This method is called when the user flags a row to be deleted (the "delete" column value is '1')
     def for_delete(self, row, instance):
         if "delete" in row:
@@ -122,7 +128,6 @@ class ItemResource(ItemServiceResource):
         row["care_type"] = row["care_type"].upper()
         validate_imported_item_row(row)
         process_imported_patient_categories(row)
-        row["audit_user_id"] = self.user_id
         return row
 
     # This method is overridden in order to define which data is valid during import.
@@ -151,7 +156,6 @@ class ServiceResource(ItemServiceResource):
             row["category"] = row["category"].upper()
         validate_imported_service_row(row)
         process_imported_patient_categories(row)
-        row["audit_user_id"] = self.user_id
         return row
 
     # This method is overridden in order to define which data is valid during import.
