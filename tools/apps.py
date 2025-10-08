@@ -4,17 +4,17 @@ from django.conf import settings
 MODULE_NAME = "tools"
 
 DEFAULT_CFG = {
-    "registers_perms": ["131000"],
+    "registers_perms": ["131000", "131100"],
     "registers_diagnoses_perms": ["131000", "131002", "131001"],
     "registers_health_facilities_perms": ["131000", "131004", "131003"],
     "registers_locations_perms": ["131000", "131006", "131005"],
     "registers_items_perms": ["131000", "131008", "131007"],
     "registers_services_perms": ["131000", "131010", "131009"],
-    "extracts_master_data_perms": [],
-    "extracts_officer_feedbacks_perms": [],
-    "extracts_officer_renewals_perms": [],
-    "extracts_phone_extract_perms": [],
-    "extracts_upload_claims_perms": [],
+    "extracts_master_data_perms": ["131101"],
+    "extracts_officer_feedbacks_perms": ["131106"],
+    "extracts_officer_renewals_perms": ["131105"],
+    "extracts_phone_extract_perms": ["131102", "131103"],
+    "extracts_upload_claims_perms": ["131104"],
     "master_data_password": None,
 }
 
