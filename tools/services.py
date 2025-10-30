@@ -41,7 +41,6 @@ import logging
 from dataclasses import dataclass
 import simplejson as json
 import tempfile
-import pyminizip
 import zipfile
 import sqlite3
 import os
@@ -990,13 +989,9 @@ def create_master_data_export(user):
         # We close it directly since the only thing we want is to have a temporary file that will not be deleted
         zip_file.close()
 
-        pyminizip.compress(
-            master_data_file_path,
-            "",
-            zip_file.name,
-            ToolsConfig.get_master_data_password(),
-            5,
-        )
+        with zipfile.ZipFile(zip_file.name, 'w', zipfile.ZIP_DEFLATED) as zf:
+            zf.setpassword(bytes(ToolsConfig.get_master_data_password(), 'utf-8'))
+            zf.write(master_data_file_path, os.path.basename(master_data_file_path))
 
         return zip_file
 
