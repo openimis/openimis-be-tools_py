@@ -5,6 +5,7 @@ from django.test import TestCase
 from location.test_helpers import create_test_location
 from django.conf import settings
 from tools.resources import ServiceResource
+from medical.test_helpers import create_test_service
 
 
 class ImportServiceTest(TestCase):
@@ -12,6 +13,7 @@ class ImportServiceTest(TestCase):
     def setUp(self) -> None:
         super(ImportServiceTest, self).setUp()
         self.user = create_test_interactive_user()
+        create_test_service('S', custom_props={"code": 'SS'})
 
     def test_simple_import(self):
         dir_path = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
