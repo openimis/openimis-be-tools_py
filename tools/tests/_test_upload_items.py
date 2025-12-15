@@ -1203,7 +1203,7 @@ class UploadItemsTestCase(TestCase):
         errors = []
         mock_parsing.return_value = raw_items, errors
 
-        before_total_items = Item.objects.filter(*filter_validity()).count()
+        before_total_items = Item.objects.filter(*Item.filter_validity()).count()
         expected_deleted = before_total_items - 2
 
         expected = UploadResult(
@@ -1273,11 +1273,11 @@ class UploadItemsTestCase(TestCase):
             updated=0,
             deleted=0,
         )
-        total_items_before = Item.objects.filter(*filter_validity()).count()
+        total_items_before = Item.objects.filter(*Item.filter_validity()).count()
 
         # Inserting
         result = upload_items(self.admin_user, "xml", strategy, dry_run)
-        total_items_after = Item.objects.filter(*filter_validity()).count()
+        total_items_after = Item.objects.filter(*Item.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_items_before + 2, total_items_after)
@@ -1355,11 +1355,11 @@ class UploadItemsTestCase(TestCase):
             updated=2,
             deleted=0,
         )
-        total_items_before = Item.objects.filter(*filter_validity()).count()
+        total_items_before = Item.objects.filter(*Item.filter_validity()).count()
 
         # update
         result = upload_items(self.admin_user, "xml", strategy, dry_run)
-        total_items_after = Item.objects.filter(*filter_validity()).count()
+        total_items_after = Item.objects.filter(*Item.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_items_before, total_items_after)
@@ -1448,11 +1448,11 @@ class UploadItemsTestCase(TestCase):
             updated=2,
             deleted=0,
         )
-        total_items_before = Item.objects.filter(*filter_validity()).count()
+        total_items_before = Item.objects.filter(*Item.filter_validity()).count()
 
         # insert-update
         result = upload_items(self.admin_user, "xml", strategy, dry_run)
-        total_items_after = Item.objects.filter(*filter_validity()).count()
+        total_items_after = Item.objects.filter(*Item.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_items_before + 2, total_items_after)
@@ -1475,7 +1475,7 @@ class UploadItemsTestCase(TestCase):
     @patch("tools.services.parse_xml_items")
     def test_upload_items_multiple_insert_update_delete(self, mock_parsing):
         # setup - fetching initial DB items in order not to delete them
-        all_items = Item.objects.filter(*filter_validity()).all()
+        all_items = Item.objects.filter(*Item.filter_validity()).all()
         items_to_not_delete = []
         for item in all_items:
             item_dict = item.__dict__
@@ -1554,11 +1554,11 @@ class UploadItemsTestCase(TestCase):
             updated=total_updated,
             deleted=1,
         )
-        total_items_before = Item.objects.filter(*filter_validity()).count()
+        total_items_before = Item.objects.filter(*Item.filter_validity()).count()
 
         # insert update delete
         result = upload_items(self.admin_user, "xml", strategy, dry_run)
-        total_items_after = Item.objects.filter(*filter_validity()).count()
+        total_items_after = Item.objects.filter(*Item.filter_validity()).count()
 
         self.assertEqual(expected, result)
         # 2 inserts and 1 deletion

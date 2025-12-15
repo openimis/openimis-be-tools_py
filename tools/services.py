@@ -582,7 +582,7 @@ def upload_simple_data(user, context):
     db_entries = {
         x.code: x
         for x in context.object_manager.filter(
-            code__in=[x["code"] for x in context.parsed_entries], *filter_validity()
+            code__in=[x["code"] for x in context.parsed_entries], *context.object_manager.model.filter_validity()
         )
     }
 
@@ -729,7 +729,7 @@ def load_locations_xml(xml):
 
 @functools.lru_cache(None)
 def get_parent_location(code):
-    return Location.objects.filter(code=code, *filter_validity()).first()
+    return Location.objects.filter(code=code, *Location.filter_validity()).first()
 
 
 def __chunk_list(l, size=1000):
@@ -748,7 +748,7 @@ def upload_locations(user, xml, strategy=STRATEGY_INSERT, dry_run=False):
     existing_locations = {}
     for ids_chunk in __chunk_list(ids):
         existing_locations.update({
-            loc.code: loc for loc in Location.objects.filter(code__in=ids_chunk, *filter_validity())
+            loc.code: loc for loc in Location.objects.filter(code__in=ids_chunk, *Location.filter_validity())
         })
 
     get_parent_location.cache_clear()
@@ -858,9 +858,9 @@ def load_health_facilities_xml(xml):
 @functools.lru_cache(None)
 def get_pricelist(name, type):
     if type == "services":
-        return ServicesPricelist.objects.filter(name=name, *filter_validity()).first()
+        return ServicesPricelist.objects.filter(name=name, *ServicesPricelist.filter_validity()).first()
     elif type == "items":
-        return ItemsPricelist.objects.filter(name=name, *filter_validity()).first()
+        return ItemsPricelist.objects.filter(name=name, *ServicesPricelist.filter_validity()).first()
 
 
 def upload_health_facilities(user, xml, strategy=STRATEGY_INSERT, dry_run=False):
@@ -878,7 +878,7 @@ def upload_health_facilities(user, xml, strategy=STRATEGY_INSERT, dry_run=False)
     db_health_facilities = {
         x.code: x
         for x in HealthFacility.objects.filter(
-            code__in=[x["code"] for x in raw_health_facilities], *filter_validity()
+            code__in=[x["code"] for x in raw_health_facilities], *HealthFacility.filter_validity()
         )
     }
     for facility in raw_health_facilities:
@@ -1014,7 +1014,7 @@ def create_officer_feedbacks_export(user, officer):
 
     """
 
-    prompts = FeedbackPrompt.objects.filter(*filter_validity())\
+    prompts = FeedbackPrompt.objects.filter(*FeedbackPrompt.filter_validity())\
         .filter(officer_id=officer.id, claim__feedback_status=Claim.FEEDBACK_SELECTED)\
         .select_related('claim',
                         'claim__insuree',
@@ -1061,7 +1061,7 @@ def create_officer_renewals_export(user, officer):
     from policy.models import PolicyRenewal
     format_date = '%d-%m-%Y'
     renewals = PolicyRenewal.objects.filter(
-        new_officer=officer, *filter_validity()
+        new_officer=officer, *PolicyRenewal.filter_validity()
     ).select_related(
         "policy",
         "insuree",
@@ -1138,7 +1138,7 @@ def get_controls():
 
 
 def create_phone_extract_db(location_id, with_insuree=False):
-    location = Location.objects.get(id=location_id, *filter_validity())
+    location = Location.objects.get(id=location_id, *Location.filter_validity())
     if not location:
         raise ValueError(f"Location {location_id} does not exist")
 
@@ -1173,7 +1173,7 @@ def create_phone_extract_db(location_id, with_insuree=False):
             # Medical Services
             db_con.executemany(
                 "INSERT INTO tblReferences(Code, Name, Type, Price) VALUES (?, ?, 'S', ?)",
-                Service.objects.filter(*filter_validity()).values_list(
+                Service.objects.filter(*Service.filter_validity()).values_list(
                     "code", "name", "price"
                 ),
             )
@@ -1181,7 +1181,7 @@ def create_phone_extract_db(location_id, with_insuree=False):
             # Medical Items
             db_con.executemany(
                 "INSERT INTO tblReferences(Code, Name, Type, Price) VALUES (?, ?, 'I', ?)",
-                Item.objects.filter(*filter_validity())
+                Item.objects.filter(*Item.filter_validity())
                 .values_list("code", "name", "price")
                 .all(),
             )
@@ -1189,7 +1189,7 @@ def create_phone_extract_db(location_id, with_insuree=False):
             # Medical Diagnosis
             db_con.executemany(
                 "INSERT INTO tblReferences(Code, Name, Type, Price) VALUES (?, ?, 'D', 0)",
-                Diagnosis.objects.filter(*filter_validity())
+                Diagnosis.objects.filter(*Diagnosis.filter_validity())
                 .values_list("code", "name")
                 .all(),
             )
@@ -1210,7 +1210,7 @@ def create_phone_extract_db(location_id, with_insuree=False):
             ClaimAdmin.objects.filter(
                 health_facility__location_id=location_id,
                 health_facility__validity_to__isnull=True,
-                *filter_validity(),
+                *ClaimAdmin.filter_validity(),
             )
             .annotate(
                 name=Concat(
