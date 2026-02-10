@@ -132,7 +132,7 @@ class ItemResource(ItemServiceResource):
 
     # This method is overridden in order to define which data is valid during import.
     def get_queryset(self):
-        return Item.objects.filter(*filter_validity())
+        return Item.objects.filter(*Item.filter_validity())
 
 
 class ServiceResource(ItemServiceResource):
@@ -160,4 +160,4 @@ class ServiceResource(ItemServiceResource):
 
     # This method is overridden in order to define which data is valid during import.
     def get_queryset(self):
-        return Service.objects.filter(*filter_validity())
+        return Service.objects.filter(*Service.filter_validity())

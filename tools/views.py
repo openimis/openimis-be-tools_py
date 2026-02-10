@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
 def download_locations(request):
     data = {"Regions": [], "Districts": [], "Municipalities": [], "Villages": []}
 
-    for region in Location.objects.filter(~Q(code="FR"), type="R", *filter_validity()):
+    for region in Location.objects.filter(~Q(code="FR"), type="R", *Location.filter_validity()):
         data["Regions"].append(serializers.format_location(region))
         children = Location.objects.children(region.id)
         for child in children:
@@ -106,7 +106,7 @@ def upload_locations(request):
 )
 @renderer_classes([serializers.HealthFacilitiesXMLRenderer])
 def download_health_facilities(request):
-    queryset = HealthFacility.objects.filter(*filter_validity())
+    queryset = HealthFacility.objects.filter(*HealthFacility.filter_validity())
     data = {
         "health_facility_details": [
             serializers.format_health_facility(hf) for hf in queryset
@@ -174,7 +174,7 @@ def upload_health_facilities(request):
 )
 @renderer_classes([serializers.DiagnosesXMLRenderer])
 def download_diagnoses(request):
-    queryset = Diagnosis.objects.filter(*filter_validity())
+    queryset = Diagnosis.objects.filter(*Diagnosis.filter_validity())
     data = [serializers.format_diagnosis(hf) for hf in queryset]
     return Response(
         data=data,
@@ -209,7 +209,7 @@ def download_items(request):
         The requested data in an XML file.
 
     """
-    queryset = Item.objects.filter(*filter_validity())
+    queryset = Item.objects.filter(*Item.filter_validity())
     data = [serializers.format_items(item) for item in queryset]
     return Response(
         data=data,
@@ -227,7 +227,7 @@ def download_items(request):
 )
 @renderer_classes([serializers.ServicesXMLRenderer])
 def download_services(request):
-    queryset = Service.objects.filter(*filter_validity())
+    queryset = Service.objects.filter(*Service.filter_validity())
     data = [serializers.format_services(service) for service in queryset]
     return Response(
         data=data,
@@ -419,7 +419,7 @@ def download_feedbacks(request):
         raise PermissionDenied(_("unauthorized"))
 
     officer_id = request.GET.get("officer_id")
-    officer = get_object_or_404(Officer, id=officer_id, *filter_validity())
+    officer = get_object_or_404(Officer, id=officer_id, *Officer.filter_validity())
 
     export_file = services.create_officer_feedbacks_export(request.user, officer)
 
@@ -438,7 +438,7 @@ def download_renewals(request):
         raise PermissionDenied(_("unauthorized"))
 
     officer_id = request.GET.get("officer_id")
-    officer = get_object_or_404(Officer, id=officer_id, *filter_validity())
+    officer = get_object_or_404(Officer, id=officer_id, *Officer.filter_validity())
 
     export_file = services.create_officer_renewals_export(request.user, officer)
     response = FileResponse(
@@ -586,7 +586,7 @@ def export_items(request):
 def process_export_items(user, data_type):
     logger.info("User (audit id %s) requested export of medical items in %s", user.id_for_audit, data_type)
     item_resource = ItemResource(user=user)
-    query_set = Item.objects.filter(*filter_validity()).order_by("code")
+    query_set = Item.objects.filter(*Item.filter_validity()).order_by("code")
     dataset = item_resource.export(query_set)
     datasets = {
         XLS: dataset.xls,
@@ -644,7 +644,7 @@ def export_services(request):
 def process_export_services(user, data_type):
     logger.info("User (audit id %s) requested export of medical services in %s", user.id_for_audit, data_type)
     service_resource = ServiceResource(user)
-    query_set = Service.objects.filter(*filter_validity()).order_by("code")
+    query_set = Service.objects.filter(*Service.filter_validity()).order_by("code")
     dataset = service_resource.export(query_set)
     datasets = {
         XLS: dataset.xls,

@@ -1063,7 +1063,7 @@ class UploadServicesTestCase(TestCase):
         errors = []
         mock_parsing.return_value = raw_services, errors
 
-        before_total_services = Service.objects.filter(*filter_validity()).count()
+        before_total_services = Service.objects.filter(*Service.filter_validity()).count()
         expected_deleted = before_total_services - 2
 
         expected = UploadResult(
@@ -1133,11 +1133,11 @@ class UploadServicesTestCase(TestCase):
             updated=0,
             deleted=0,
         )
-        total_services_before = Service.objects.filter(*filter_validity()).count()
+        total_services_before = Service.objects.filter(*Service.filter_validity()).count()
 
         # Inserting
         result = upload_services(self.admin_user, "xml", strategy, dry_run)
-        total_services_after = Service.objects.filter(*filter_validity()).count()
+        total_services_after = Service.objects.filter(*Service.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_services_before + 2, total_services_after)
@@ -1216,11 +1216,11 @@ class UploadServicesTestCase(TestCase):
             updated=2,
             deleted=0,
         )
-        total_services_before = Service.objects.filter(*filter_validity()).count()
+        total_services_before = Service.objects.filter(*Service.filter_validity()).count()
 
         # update
         result = upload_services(self.admin_user, "xml", strategy, dry_run)
-        total_services_after = Service.objects.filter(*filter_validity()).count()
+        total_services_after = Service.objects.filter(*Service.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_services_before, total_services_after)
@@ -1310,11 +1310,11 @@ class UploadServicesTestCase(TestCase):
             updated=2,
             deleted=0,
         )
-        total_services_before = Service.objects.filter(*filter_validity()).count()
+        total_services_before = Service.objects.filter(*Service.filter_validity()).count()
 
         # insert-update
         result = upload_services(self.admin_user, "xml", strategy, dry_run)
-        total_services_after = Service.objects.filter(*filter_validity()).count()
+        total_services_after = Service.objects.filter(*Service.filter_validity()).count()
 
         self.assertEqual(expected, result)
         self.assertEqual(total_services_before + 2, total_services_after)
@@ -1337,7 +1337,7 @@ class UploadServicesTestCase(TestCase):
     @patch("tools.services.parse_xml_services")
     def test_upload_services_multiple_insert_update_delete(self, mock_parsing):
         # setup - fetching initial DB services in order not to delete them
-        services = Service.objects.filter(*filter_validity()).all()
+        services = Service.objects.filter(*Service.filter_validity()).all()
         services_to_not_delete = []
         for service in services:
             service_dict = service.__dict__
@@ -1416,11 +1416,11 @@ class UploadServicesTestCase(TestCase):
             updated=total_updated,
             deleted=1,
         )
-        total_services_before = Service.objects.filter(*filter_validity()).count()
+        total_services_before = Service.objects.filter(*Service.filter_validity()).count()
 
         # insert update delete
         result = upload_services(self.admin_user, "xml", strategy, dry_run)
-        total_services_after = Service.objects.filter(*filter_validity()).count()
+        total_services_after = Service.objects.filter(*Service.filter_validity()).count()
 
         self.assertEqual(expected, result)
         # 2 inserts and 1 deletion
