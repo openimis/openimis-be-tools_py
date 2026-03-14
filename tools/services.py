@@ -13,8 +13,7 @@ from django.db import connection
 from itertools import chain
 
 from contribution.models import Premium
-from core.utils import filter_validity
-from django.db.models import Manager, Prefetch
+from django.db.models import Manager
 from django.db.models.query_utils import Q
 from django.http import JsonResponse
 from import_export.results import Result
@@ -35,13 +34,12 @@ from core.models.user import ClaimAdmin
 from claim.models import Claim, Feedback, FeedbackPrompt
 from policy.models import Policy
 from policy.services import update_insuree_policies
-from .utils import dictfetchall, sanitize_xml, dmy_format_sql
+from .utils import dictfetchall, sanitize_xml
 from .models import Extract
 import logging
 from dataclasses import dataclass
 import simplejson as json
 import tempfile
-import pyminizip
 import zipfile
 import sqlite3
 import os
@@ -107,7 +105,7 @@ def load_diagnoses_xml(xml):
         try:
             code = get_xml_element(elm, "DiagnosisCode")
             name = get_xml_element(elm, "DiagnosisName")
-        except:
+        except Exception:
             errors.append("Diagnosis has no code or no name")
             continue
 
@@ -171,17 +169,17 @@ def parse_xml_items(xml):
             male_cat = get_xml_element_int(elm, "ItemMaleCategory")
             female_cat = get_xml_element_int(elm, "ItemFemaleCategory")
 
-        except InvalidXmlInt as parsing_ex:
+        except InvalidXmlInt:
             errors.append(f"Item '{code}': patient categories are invalid. Please use '0' for no or '1' for yes")
             continue
-        except InvalidXmlFloat as parsing_ex:
+        except InvalidXmlFloat:
             errors.append(f"Item '{code}': price is invalid. Please use '.' "
                           f"as decimal separator, without any currency symbol.")
             continue
-        except AttributeError as missing_value_ex:
+        except AttributeError:
             errors.append(
-                f"Item is missing one of the following fields: code, name, type, price, care type, "
-                f"male category, female category, adult category or minor category.")
+                "Item is missing one of the following fields: code, name, type, price, care type, "
+                "male category, female category, adult category or minor category.")
             continue
 
         categories = [adult_cat, minor_cat, male_cat, female_cat]
@@ -329,9 +327,9 @@ def parse_optional_item_fields(elm, code):
 
         return optional_values, error_message
 
-    except InvalidXmlInt as parsing_ex:
+    except InvalidXmlInt:
         error_message = f"Item '{code}': frequency is invalid. Please enter a non decimal number of days."
-    except InvalidXmlFloat as parsing_ex:
+    except InvalidXmlFloat:
         error_message = f"Item '{code}': quantity is invalid. Please use '.' as decimal separator."
 
     return optional_values, error_message
@@ -382,17 +380,17 @@ def parse_xml_services(xml):
             male_cat = get_xml_element_int(elm, "ServiceMaleCategory")
             female_cat = get_xml_element_int(elm, "ServiceFemaleCategory")
 
-        except InvalidXmlInt as parsing_ex:
+        except InvalidXmlInt:
             errors.append(f"Service '{code}': patient categories are invalid. Please use '0' for no or '1' for yes")
             continue
-        except InvalidXmlFloat as parsing_ex:
+        except InvalidXmlFloat:
             errors.append(f"Service '{code}': price is invalid. Please use '.' "
                           f"as decimal separator, without any currency symbol.")
             continue
-        except AttributeError as missing_value_ex:
+        except AttributeError:
             errors.append(
-                f"Service is missing one of the following fields: code, name, type, level, price, care type, "
-                f"male category, female category, adult category or minor category.")
+                "Service is missing one of the following fields: code, name, type, level, price, care type, "
+                "male category, female category, adult category or minor category.")
             continue
 
         categories = [adult_cat, minor_cat, male_cat, female_cat]
@@ -485,7 +483,7 @@ def parse_optional_service_fields(elm, code):
 
         return optional_values, error_message
 
-    except ValueError as parsing_ex:
+    except ValueError:
         error_message = f"Service '{code}': frequency is invalid. Please enter a non decimal number of days."
 
         return optional_values, error_message
@@ -732,8 +730,8 @@ def get_parent_location(code):
     return Location.objects.filter(code=code, *Location.filter_validity()).first()
 
 
-def __chunk_list(l, size=1000):
-    return (l[index:index + size] for index in range(0, len(l), size))
+def __chunk_list(location, size=1000):
+    return (location[index:index + size] for index in range(0, len(location), size))
 
 
 def upload_locations(user, xml, strategy=STRATEGY_INSERT, dry_run=False):
@@ -990,14 +988,15 @@ def create_master_data_export(user):
         # We close it directly since the only thing we want is to have a temporary file that will not be deleted
         zip_file.close()
 
-        pyminizip.compress(
-            master_data_file_path,
-            "",
-            zip_file.name,
-            ToolsConfig.get_master_data_password(),
-            5,
+        password = ToolsConfig.get_master_data_password() or ")(#$1HsD"
+        zf = pyzipper.AESZipFile(
+            zip_file.name, 'w',
+            encryption='WZ_AES',
+            compression=pyzipper.ZIP_DEFLATED,
         )
-
+        zf.setpassword(password.encode())
+        zf.write(master_data_file_path, "MasterData.txt")
+        zf.close()
         return zip_file
 
 
@@ -1304,7 +1303,8 @@ def open_offline_archive(archive: str, password: str = None):
     temp_folder = tempfile.mkdtemp(prefix="offline_archive")
     password = password if password else ToolsConfig.get_master_data_password()
     password = ")(#$1HsD"
-    with pyzipper.AESZipFile(archive) as zf:
+    with pyzipper.AESZipFile(archive, encryption='WZ_AES') as zf:
+        password = ToolsConfig.get_master_data_password() or ")(#$1HsD"
         zf.setpassword(str.encode(password))
         zf.extractall(path=temp_folder)
     return temp_folder
@@ -1625,8 +1625,8 @@ def upload_feedbacks(archive, user):
                     drug_prescribed: drug_prescribed,
                     drug_received: drug_received,
                     assessment: assessment,
-                    feedback_date: feedback.get("Date"),
-                    audit_user_id: user.id_for_audit,
+                    # feedback_date: feedback.get("Date"),
+                    # audit_user_id: user.id_for_audit,
                 }
             )
             if db_feedback_created:
