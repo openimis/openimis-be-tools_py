@@ -9,7 +9,7 @@ from xml.etree import ElementTree
 from datetime import date, datetime, time, timedelta
 
 from core.models import Officer
-from core.test_helpers import create_test_officer
+from core.test_helpers import create_test_officer, create_test_interactive_user
 
 from core.utils import filter_validity
 from core.services import create_or_update_officer_villages
@@ -25,15 +25,17 @@ from claim.test_helpers import (
 )
 
 class UploadClaimsTestCase(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.test_user = create_test_interactive_user(username="test_upload_claim_user")
+
     def test_upload_claims_unknown_hf(self):
+        # Mock users fail build_user_location_filter_query's isinstance check and fall through to legacy T-SQL, hanging the DB connection.
         with patch('tools.services.settings.ROW_SECURITY', new_callable=PropertyMock) as row_security_mock:
             row_security_mock.return_value = True
-            mock_user = mock.Mock(is_anonymous=False)
-            mock_user.has_perm = mock.MagicMock(return_value=True)
-            mock_user.is_imis_admin = mock.MagicMock(return_value=False)
             with self.assertRaises(InvalidXMLError) as cm:
                 upload_claim(
-                    mock_user,
+                    self.test_user,
                     ElementTree.fromstring(
                         """
                             <root>
