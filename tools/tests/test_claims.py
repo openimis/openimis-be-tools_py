@@ -1,28 +1,22 @@
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import patch, PropertyMock
 
 from django.test import TestCase
 from unittest import mock
 
-from tools.services import upload_claim, InvalidXMLError, get_xml_element, get_xml_element_int,\
+from tools.services import upload_claim, InvalidXMLError, get_xml_element, get_xml_element_int, \
     InvalidXmlInt, create_officer_feedbacks_export, create_officer_renewals_export
 from xml.etree import ElementTree
-from datetime import date, datetime, time, timedelta
+from datetime import date, timedelta
 
-from core.models import Officer
 from core.test_helpers import create_test_officer
 
-from core.utils import filter_validity
-from core.services import create_or_update_officer_villages
-from location.models import Location
 from policy.services import insert_renewals
 from claim.models import Claim
 from claim.services import create_feedback_prompt
 from claim.test_helpers import (
     create_test_claim,
-    create_test_claimservice,
-    create_test_claimitem,
-    delete_claim_with_itemsvc_dedrem_and_history,
 )
+
 
 class UploadClaimsTestCase(TestCase):
     def test_upload_claims_unknown_hf(self):
@@ -50,6 +44,7 @@ class UploadClaimsTestCase(TestCase):
                 "User cannot upload claims for health facility WRONG",
                 str(cm.exception),
             )
+
 
 class GetXmlElement(TestCase):
     def test_get_xml_element(self):
@@ -83,21 +78,22 @@ class register(TestCase):
     test_officer = None
     test_user = None
     claim = None
+
     @classmethod
     def setUpTestData(cls):
-        
+
         cls.claim = create_test_claim(custom_props={'status': Claim.STATUS_CHECKED, 'feedback_status': Claim.FEEDBACK_SELECTED})
-        
-        cls.test_officer = create_test_officer(villages = [cls.claim.insuree.family.location])
-        
+
+        cls.test_officer = create_test_officer(villages=[cls.claim.insuree.family.location])
+
         insert_renewals(
-            date_from= date.today() + timedelta(days=-3650), 
-            date_to=date.today()+ timedelta(days=7300), 
-            officer_id=cls.test_officer.id, 
-            reminding_interval=365, 
-            location_id=cls.claim.insuree.family.location.id, 
+            date_from=date.today() + timedelta(days=-3650),
+            date_to=date.today() + timedelta(days=7300),
+            officer_id=cls.test_officer.id,
+            reminding_interval=365,
+            location_id=cls.claim.insuree.family.location.id,
             location_levels=4)
-        
+
     def test_generating_feedback(self):
         class DummyUser:
             id_for_audit = -1
@@ -105,15 +101,14 @@ class register(TestCase):
         mock_user = mock.Mock(is_anonymous=False)
         mock_user.has_perm = mock.MagicMock(return_value=True)
         mock_user.is_imis_admin = mock.MagicMock(return_value=False)
-        
+
         create_feedback_prompt(self.claim, user=DummyUser())
         zip = create_officer_feedbacks_export(mock_user, self.test_officer)
         self.assertNotEqual(zip, None)
-        
+
     def test_generating_renewal(self):
         mock_user = mock.Mock(is_anonymous=False)
         mock_user.has_perm = mock.MagicMock(return_value=True)
         mock_user.is_imis_admin = mock.MagicMock(return_value=False)
         zip = create_officer_renewals_export(mock_user, self.test_officer)
         self.assertNotEqual(zip, None)
-        
