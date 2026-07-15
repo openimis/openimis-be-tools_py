@@ -967,6 +967,9 @@ def create_master_data_export(user):
         "relations": """SELECT "RelationId", "Relation", "SortOrder", "AltLanguage" FROM "tblRelations";""",
         "phoneDefaults": """SELECT "RuleName", "RuleValue" FROM "tblIMISDefaultsPhone";""",
         "genders": """SELECT "Code", "Gender", "AltLanguage", "SortOrder" FROM "tblGender";""",
+        "ModuleConfiguration": """SELECT "id"::text, "module", "version", "config", TO_CHAR("is_disabled_until", 'yyyy-MM-dd')is_disabled_until, "is_exposed", "layer" FROM "core_ModuleConfiguration" WHERE "layer"='fe' AND "is_exposed" is true;"""
+        if connection.vendor == "postgresql" else
+        """SELECT CAST("id" AS VARCHAR(36)), "module", "version", "config", FORMAT("is_disabled_until", 'yyyy-MM-dd')is_disabled_until, "is_exposed", "layer" FROM "core_ModuleConfiguration" WHERE "layer"='fe' AND "is_exposed" = 'true'""",
     }
 
     results = {}
