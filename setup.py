@@ -24,7 +24,6 @@ setup(
         "djangorestframework",
         "djangorestframework-xml",
         "simplejson",
-        "pyminizip",
         "pyzipper",
         "defusedxml",
         "tablib",

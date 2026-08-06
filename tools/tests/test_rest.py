@@ -2,22 +2,19 @@
 from core.test_helpers import create_test_interactive_user
 from rest_framework import status
 from rest_framework.test import APITestCase
-from dataclasses import dataclass
 from graphql_jwt.shortcuts import get_token
-from core.models import User
 from django.conf import settings
-from django.db import connection
-import json
 import os
 from django.core.files.uploadedfile import SimpleUploadedFile
 from core.models.openimis_graphql_test_case import BaseTestContext as DummyContext
 
 
-class ReportAPITests( APITestCase):
+class ReportAPITests(APITestCase):
 
     admin_user = None
     admin_token = None
     dir_path = None
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -33,14 +30,14 @@ class ReportAPITests( APITestCase):
             uploaded_file = SimpleUploadedFile("service_example.json", file_content, content_type="application/json")
             response = self.client.post(URL, {'file': uploaded_file}, format='multipart', **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
-              
+
     def test_export_item_xls(self):
         URL = f'/{settings.SITE_ROOT()}tools/exports/items?file_format=xls'
         headers = {"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
         response = self.client.get(URL, format='json', **headers)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
-        
+
     def test_import_service_json(self):
         URL = f'/{settings.SITE_ROOT()}tools/imports/services?file_format=json'
         headers = {"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
@@ -49,11 +46,28 @@ class ReportAPITests( APITestCase):
             uploaded_file = SimpleUploadedFile("service_example.json", file_content, content_type="application/json")
             response = self.client.post(URL, {'file': uploaded_file}, format='multipart', **headers)
         self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
-              
+
     def test_export_service_xls(self):
         URL = f'/{settings.SITE_ROOT()}tools/exports/services?file_format=xls'
         headers = {"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
         response = self.client.get(URL, format='json', **headers)
-        self.assertEqual(response.status_code, status.HTTP_200_OK, response.content)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, getattr(response, "content", "no content"))
+
+    def test_download_master_data(self):
+        URL = f"/{settings.SITE_ROOT()}tools/extracts/download_master_data"
+        headers = {"HTTP_AUTHORIZATION": f"Bearer {self.admin_token}"}
+        response = self.client.get(URL, format="json", **headers)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, getattr(response, "content", "no content"))
+        # Additional: verify it's a password-protected ZIP
+        import io
+        import pyzipper
+        import tempfile
+        from tools.apps import ToolsConfig
+        zip_data = io.BytesIO(b''.join(response.streaming_content))
+        temp_folder = tempfile.mkdtemp(prefix="offline_archive")
+        with pyzipper.AESZipFile(zip_data, encryption='WZ_AES') as zf:
+            password = ToolsConfig.get_master_data_password() or ")(#$1HsD"
+            zf.setpassword(str.encode(password))
+            zf.extractall(path=temp_folder)
 
 # todo expand tests
