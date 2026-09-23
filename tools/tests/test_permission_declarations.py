@@ -1,28 +1,28 @@
 """
-Garde-fous sur la declaration des droits de tools.
+Guard rails on tools' rights declaration.
 
-Meme structure que `claim` et `product` : `DJANGO_PERMS` par entite puis par action,
-`_PERM_CFG` qui relie les cles de config, et `Extract.get_rights` comme point d'acces.
+Same structure as `claim` and `product`: `DJANGO_PERMS` by entity then by action,
+`_PERM_CFG` linking the config keys, and `Extract.get_rights` as the access point.
 
-La difference de `tools`, et la raison d'etre de la moitie de ce fichier : ses onze
-cles de config ne portent pas un identifiant mais une **pile** de plusieurs, evaluee en
-OU par `has_perms`. La pile date du commit initial et reproduit le catalogue de l'IMIS
-historique. Ce qui est verrouille ici :
+What makes `tools` different, and is the reason half this file exists: its eleven
+config keys carry not one identifier but a **stack** of several, evaluated as an OR by
+`has_perms`. The stack dates from the initial commit and reproduces the historical IMIS
+catalogue. What is locked down here:
 
-  * la valeur exacte de chaque pile, ordre compris - c'est ce qui rend visible en revue
-    toute conversion qui "nettoierait" un identifiant et retirerait du meme geste
-    l'acces aux roles qui ne portent que celui-la ;
-  * la liste des actions volontairement absentes de `_PERM_CFG` : les alternates
-    empiles ne sont pas controlables separement aujourd'hui, et ajouter une action sans
-    y penser doit faire echouer ce test ;
-  * le fait que `configured()` renvoie None sur ces alternates, pour que l'appelant
-    echoue ferme plutot que de recevoir la pile entiere en croyant tenir le seul droit
-    d'ecriture.
+  * the exact value of each stack, order included - that is what makes visible in
+    review any conversion that would "tidy up" an identifier and, in the same stroke,
+    withdraw access from the roles that carry only that one;
+  * the list of actions deliberately absent from `_PERM_CFG`: the stacked alternates
+    are not separately checkable today, and adding an action without thinking about it
+    has to make this test fail;
+  * the fact that `configured()` returns None on those alternates, so that the caller
+    fails closed rather than receiving the whole stack while believing it holds the
+    write right alone.
 
-Ce que ce fichier **ne** verrouille **pas**, faute de decision : la separation
-lecture/ecriture des registres. `views.py` garde le `GET download_*` et le
-`POST upload_*` avec la meme cle ; les actions `query` et `write` sont declarees
-separement mais empilees dans la meme cle, donc la separation est nommee, pas faite.
+What this file does **not** lock down, for want of a decision: the read/write split of
+the registers. `views.py` guards the `GET download_*` and the `POST upload_*` with the
+same key; the `query` and `write` actions are declared separately but stacked in the
+same key, so the split is named, not made.
 """
 
 import json
@@ -41,8 +41,8 @@ from tools.apps import (
 )
 from tools.models import Extract
 
-# Les piles telles que deployees, ordre compris. En changer une est incompatible avec
-# les roles existants : il faut mettre ce test a jour *et* accorder le nouveau droit.
+# The stacks as deployed, order included. Changing one is incompatible with the
+# existing roles: this test has to be updated *and* the new right granted.
 EXPECTED_RIGHTS = {
     "registers_perms": ["131000", "131100"],
     "registers_diagnoses_perms": ["131000", "131002", "131001"],
@@ -57,10 +57,10 @@ EXPECTED_RIGHTS = {
     "extracts_upload_claims_perms": ["131104"],
 }
 
-# Ce que `permissions_map.json` catalogue pour tools. Un seul identifiant par cle :
-# `generate_permissions_map.py` ecrase la valeur a chaque tour de boucle, donc c'est le
-# **dernier** de la pile qui sort. Les autres ne sont pas morts, ils sont
-# inexprimables par une carte a un identifiant par cle.
+# What `permissions_map.json` catalogues for tools. A single identifier per key:
+# `generate_permissions_map.py` overwrites the value on every pass of the loop, so it
+# is the **last** of the stack that comes out. The others are not dead, they are
+# inexpressible by a map with one identifier per key.
 CATALOGUED = {
     "tools.registers": "131100",
     "tools.registers_diagnoses": "131001",
@@ -75,14 +75,13 @@ CATALOGUED = {
     "tools.extracts_upload_claims": "131104",
 }
 
-# Identifiants empiles qu'aucune entree de la carte ne nomme. Repris de
-# `core.tests.test_permission_map_consistency.KNOWN_UNCATALOGUED`, epingle ici pour que
-# la liste ne grossisse pas en silence.
+# Stacked identifiers that no entry of the map names. Taken from
+# `core.tests.test_permission_map_consistency.KNOWN_UNCATALOGUED`, pinned here so that
+# the list does not grow silently.
 UNCATALOGUED = {"131000", "131002", "131004", "131006", "131008", "131010", "131102"}
 
-# Actions declarees sans cle de config a elles : les maillons empiles d'une pile dont
-# la cle est portee par l'action principale. Aucune n'est controlable separement
-# aujourd'hui.
+# Actions declared with no config key of their own: the stacked links of a stack whose
+# key is carried by the main action. None of them is separately checkable today.
 STACKED_ALTERNATES = {
     ("registers", "any"),
     ("registersDiagnoses", "write"),
@@ -96,7 +95,7 @@ STACKED_ALTERNATES = {
 
 class ToolsPermissionDeclarationTestCase(TestCase):
     def test_right_ids_unchanged(self):
-        """La conversion ne doit rien retirer d'une pile - pas meme l'ordre."""
+        """The conversion must take nothing out of a stack - not even the order."""
         self.assertEqual(
             {key: getattr(ToolsConfig, key) for key in EXPECTED_RIGHTS}, EXPECTED_RIGHTS
         )
@@ -123,12 +122,12 @@ class ToolsPermissionDeclarationTestCase(TestCase):
         self.assertEqual(missing, [])
 
     def test_no_right_list_is_empty(self):
-        """`has_perms([])` renvoie True : une pile vide accorderait a tout le monde."""
+        """`has_perms([])` returns True: an empty stack would grant to everybody."""
         empty = [key for key in _PERM_CFG if not getattr(ToolsConfig, key)]
         self.assertEqual(empty, [])
 
     def test_every_declared_id_is_used_by_a_config_key(self):
-        """Aucun identifiant declare ne doit rester hors des piles posees."""
+        """No declared identifier may stay outside the stacks laid down."""
         declared_ids = {
             str(right_id)
             for actions in DJANGO_PERMS.values()
@@ -139,8 +138,8 @@ class ToolsPermissionDeclarationTestCase(TestCase):
 
     def test_catalogued_ids_are_the_last_of_their_stack(self):
         """
-        Chaque cle catalogue l'identifiant de son action principale, et c'est aussi le
-        dernier de la pile - ce que le generateur de la carte produit mecaniquement.
+        Each key catalogues its main action's identifier, and that is also the last of
+        the stack - what the map generator mechanically produces.
         """
         for key, expected in EXPECTED_RIGHTS.items():
             entity, action = _PERM_CFG[key]
@@ -149,11 +148,11 @@ class ToolsPermissionDeclarationTestCase(TestCase):
 
     def test_catalogue_matches_permissions_map(self):
         """
-        Le catalogue de l'assemblage, pas celui du paquet : les modules sont installes
-        depuis un autre arbre, donc on le resout depuis BASE_DIR.
+        The assembly's catalogue, not the package's: the modules are installed from
+        another tree, so it is resolved from BASE_DIR.
         """
         path = Path(settings.BASE_DIR) / "permissions_map.json"
-        if not path.exists():  # pragma: no cover - assemblage sans carte
+        if not path.exists():  # pragma: no cover - assembly without a map
             self.skipTest(f"{path} absent")
         catalogue = json.loads(path.read_text(encoding="utf-8"))
         actual = {
@@ -180,9 +179,9 @@ class ToolsPermissionDeclarationTestCase(TestCase):
 
     def test_no_right_id_is_shared(self):
         """
-        Contrairement a claim ou insuree, tools n'a aucun alias volontaire : chaque
-        identifiant est declare une fois et une seule. 131000 en particulier est
-        factorise sur l'entite `registers` plutot que repete sur les cinq registres.
+        Unlike claim or insuree, tools has no deliberate alias: each identifier is
+        declared once and once only. 131000 in particular is factored onto the
+        `registers` entity rather than repeated on the five registers.
         """
         seen = {}
         for entity, actions in DJANGO_PERMS.items():
