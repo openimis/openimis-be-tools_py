@@ -40,7 +40,6 @@ import logging
 from dataclasses import dataclass
 import simplejson as json
 import tempfile
-import pyminizip
 import zipfile
 import sqlite3
 import os
@@ -990,13 +989,20 @@ def create_master_data_export(user):
         # We close it directly since the only thing we want is to have a temporary file that will not be deleted
         zip_file.close()
 
-        pyminizip.compress(
-            master_data_file_path,
-            "",
-            zip_file.name,
-            ToolsConfig.get_master_data_password(),
-            5,
-        )
+        password = ToolsConfig.get_master_data_password()
+        if password:
+            # WinZip AES-256, which the policies app reads with zip4j (the method it uses
+            # for its own uploads); legacy ZipCrypto is broken by design.
+            archive = pyzipper.AESZipFile(
+                zip_file.name, "w", compression=pyzipper.ZIP_DEFLATED, compresslevel=5,
+                encryption=pyzipper.WZ_AES,
+            )
+            archive.setpassword(password.encode("utf-8"))
+        else:
+            # Left unencrypted: the app's online fetch reads it with java.util.zip.
+            archive = zipfile.ZipFile(zip_file.name, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=5)
+        with archive:
+            archive.write(master_data_file_path, "MasterData.txt")
 
         return zip_file
 
