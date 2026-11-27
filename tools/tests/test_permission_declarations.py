@@ -25,11 +25,9 @@ same key; the `query` and `write` actions are declared separately but stacked in
 same key, so the split is named, not made.
 """
 
-import json
-from pathlib import Path
-
-from django.conf import settings
 from django.test import TestCase
+
+from core.utils import build_permissions_map
 
 from tools.apps import (
     DJANGO_PERMS,
@@ -147,14 +145,8 @@ class ToolsPermissionDeclarationTestCase(TestCase):
                 self.assertEqual(perms(entity, action), [expected[-1]])
 
     def test_catalogue_matches_permissions_map(self):
-        """
-        The assembly's catalogue, not the package's: the modules are installed from
-        another tree, so it is resolved from BASE_DIR.
-        """
-        path = Path(settings.BASE_DIR) / "permissions_map.json"
-        if not path.exists():  # pragma: no cover - assembly without a map
-            self.skipTest(f"{path} absent")
-        catalogue = json.loads(path.read_text(encoding="utf-8"))
+        """The map generated from the loaded modules carries the same identifiers."""
+        catalogue = build_permissions_map()
         actual = {
             key: str(value)
             for key, value in catalogue.items()
